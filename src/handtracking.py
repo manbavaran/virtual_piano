@@ -19,6 +19,7 @@ def on_frame(frame):
 
     # 랜드마크가 감지되면 그려줌
     if results.multi_hand_landmarks:
+        
         for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
                 frame,
@@ -26,6 +27,7 @@ def on_frame(frame):
                 mp_hands.HAND_CONNECTIONS,
                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
                 mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2)
+                
             )
     return frame
 
