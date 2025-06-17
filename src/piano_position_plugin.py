@@ -1,50 +1,30 @@
+# 파일: piano_position_plugin.py
 import cv2
-import mediapipe as mp
 
 class PianoPositionPlugin:
     def __init__(self):
-        self.hands = mp.solutions.hands.Hands()
-        self.snap_position = (None, None)
-        self.position_locked = False
-
-    def get_snap_position(self, x, y, width, height):
-        cols, rows = 3, 2
-        cell_w = width // cols
-        cell_h = height // rows
-        snap_x = round(x / cell_w) * cell_w
-        snap_y = round(y / cell_h) * cell_h
-        return snap_x, snap_y
+        self.prev_hand_center = None
 
     def on_frame(self, frame):
-        frame = cv2.flip(frame, 1)
-        h, w, _ = frame.shape
-        print(f"📷 Frame size: {w}x{h}")
+        h, w = frame.shape[:2]
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.hands.process(rgb)
-        print(f"🤚 손 검출됨? → {bool(results.multi_hand_landmarks)}")
+        # 기준선: 피아노 UI가 위치할 영역 시각화 (22% ~ 45%)
+        y_top = int(h * 0.55)
+        y_bottom = int(h * 0.78)
+        cv2.line(frame, (0, y_top), (w, y_top), (0, 255, 0), 1)
+        cv2.line(frame, (0, y_bottom), (w, y_bottom), (0, 255, 0), 1)
 
-        if results.multi_hand_landmarks and not self.position_locked:
-            hand = results.multi_hand_landmarks[0]
-            cx = int(hand.landmark[9].x * w)
-            cy = int(hand.landmark[9].y * h)
-            self.snap_position = self.get_snap_position(cx, cy, w, h)
-            print(f"📦 Snap 위치: {self.snap_position}")
+        # (임시) 손가락 검출 없이 네모 제스처가 있다고 가정하고 표시
+        # 추후 hand tracking 기반 제스처 인식으로 확장
+        box_width = 300
+        box_height = 100
+        cx, cy = w // 2, (y_top + y_bottom) // 2
 
-            thumb = hand.landmark[4]
-            index = hand.landmark[8]
-            dist = ((thumb.x - index.x)**2 + (thumb.y - index.y)**2)**0.5
-            if dist < 0.05:
-                print("✅ 위치 확정됨!")
-                self.position_locked = True
+        x1 = max(0, cx - box_width // 2)
+        y1 = max(0, cy - box_height // 2)
+        x2 = min(w, cx + box_width // 2)
+        y2 = min(h, cy + box_height // 2)
 
-        if self.snap_position[0] is not None:
-            color = (0, 255, 255) if not self.position_locked else (0, 255, 0)
-            cv2.rectangle(
-                frame,
-                (self.snap_position[0] - 60, self.snap_position[1] - 30),
-                (self.snap_position[0] + 60, self.snap_position[1] + 30),
-                color, 2
-            )
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
 
         return frame
