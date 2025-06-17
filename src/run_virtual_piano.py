@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from mediawebcore.core import run_server
 from piano_position_plugin import PianoPositionPlugin
 
@@ -8,7 +11,7 @@ run_server(
     video_size_input=["80%", "40%"],
     video_size_output=["80%", "40%"],
     layout="top-bottom",
-    render_mode="bottom",
+
     audio_send=False,
     audio_receive=False
 )

@@ -35,27 +35,35 @@ class PianoPositionPlugin:
 
             # 안내문구
             middle_y = int((y1 + y2) / 2)
-            cv2.putText(frame, "손을 펼친 상태로 기준선 안에 자연스럽게 올려주세요",
+            cv2.putText(frame, "Place your hand in this zone (approx. piano key length)",
                         (10, middle_y), cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
             # 제스처 인식
             results = self.hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            crop_rect = None
             if results.multi_hand_landmarks:
                 for hand_landmarks in results.multi_hand_landmarks:
                     if self.is_ok_sign(hand_landmarks):
-                        self.should_crop = True
-                        print("✅ OK 제스처 인식됨! 크롭 활성화됨.")
-                        break
+                        # ✋ 손의 중심 좌표 계산
+                        cx = int(hand_landmarks.landmark[9].x * w)
+                        cy = int(hand_landmarks.landmark[9].y * h)
+                        
+                        if y1 <= cy <= y2:  # 💡 기준선 안쪽에 있을 때만 유효
+                            print("✅ OK 사인 인식 + 기준선 통과")
+                            self.should_crop = True
+                            print("✅ OK 제스처 인식됨! 크롭 활성화됨.")
+                            break
+                        else:
+                            print("OK 사인 인식됨. 하지만 기준선 밖입니다.")
 
             # 크롭 여부
             if self.should_crop:
-                crop_h = y2 - y1
-                if crop_h > 0:
-                    return frame, (0, y1, w, crop_h)
-                else:
-                    print("⚠️ 잘못된 크롭 범위")
-                    return frame, None
+                crop_rect = (0, y1, w, y2 - y1)
+                cropped = frame[y1:y2, :]
+                return cropped, crop_rect
+            else:
+                print("크롭 실패")
 
             return frame, None
 
