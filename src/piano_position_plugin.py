@@ -1,30 +1,28 @@
-# 파일: piano_position_plugin.py
+# piano_position_plugin.py
 import cv2
 
 class PianoPositionPlugin:
     def __init__(self):
-        self.prev_hand_center = None
+        self.crop_active = False
+        self.crop_rect = None
 
     def on_frame(self, frame):
         h, w = frame.shape[:2]
 
-        # 기준선: 피아노 UI가 위치할 영역 시각화 (22% ~ 45%)
-        y_top = int(h * 0.55)
-        y_bottom = int(h * 0.78)
-        cv2.line(frame, (0, y_top), (w, y_top), (0, 255, 0), 1)
-        cv2.line(frame, (0, y_bottom), (w, y_bottom), (0, 255, 0), 1)
+        # 기준선 시각화
+        lower = int(h * 0.78)
+        upper = int(h * 0.45)
+        cv2.line(frame, (0, lower), (w, lower), (0, 255, 0), 2)
+        cv2.line(frame, (0, upper), (w, upper), (0, 255, 0), 2)
 
-        # (임시) 손가락 검출 없이 네모 제스처가 있다고 가정하고 표시
-        # 추후 hand tracking 기반 제스처 인식으로 확장
-        box_width = 300
-        box_height = 100
-        cx, cy = w // 2, (y_top + y_bottom) // 2
+        # 제스처 인식 로직 (예: 쌍따봉) – 여기선 임시로 활성화 가정
+        if not self.crop_active:
+            self.crop_active = True
+            self.crop_rect = (0, lower, w, upper - lower)
 
-        x1 = max(0, cx - box_width // 2)
-        y1 = max(0, cy - box_height // 2)
-        x2 = min(w, cx + box_width // 2)
-        y2 = min(h, cy + box_height // 2)
+        # 크롭 여부에 따라 결과 리턴
+        return frame, self.crop_rect if self.crop_active else None
 
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
-
-        return frame
+plugin = PianoPositionPlugin()
+def on_frame(frame):
+    return plugin.on_frame(frame)
