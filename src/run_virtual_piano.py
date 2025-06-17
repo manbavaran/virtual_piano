@@ -7,7 +7,8 @@ run_server(
     on_frame=plugin.on_frame,
     video_size_input=["80%", "40%"],
     video_size_output=["80%", "40%"],
-    layout="center",
+    layout="top-bottom",
+    render_mode="bottom",
     audio_send=False,
     audio_receive=False
 )
