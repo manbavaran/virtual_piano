@@ -68,8 +68,16 @@
                         const dx = 0;
                         const dy = canvas.height - dh;
 
-                        console.log("📝 안내문구를 그립니다:", canvas.width/2, (canvas.height - dh)/2 - 10);
+                        
+                        
+                        // 1. 위 빈 공간 영역(회색) 그리기
+                        ctx.fillStyle = "#fff";
+                        ctx.fillRect(0, 0, canvas.width, canvas.height - dh);
 
+                        // 2. 하단에 크롭된 피아노 이미지 그리기
+                        ctx.drawImage(img, x, y, w, h, dx, dy, dw, dh);
+                        
+                        
                         // 안내문구 (중앙 정렬)
                         ctx.save();
                         ctx.textAlign = "center";
@@ -77,27 +85,25 @@
                         
                         // 진한 검정 굵은 글씨
                         ctx.font = "bold 2em sans-serif";
-                        ctx.fillStyle = "#FFF";
+                        ctx.fillStyle = "#222";
                         
-                        
-
                         ctx.fillText(
                                     "Drag and drop your sheet music here", 
                                     canvas.width/2,
                                     (canvas.height - dh)/2 - 10
-                                    );
+                        );
                         
+                        console.log("📝 안내문구를 그립니다:", canvas.width/2, (canvas.height - dh)/2 - 10);
+
                         // (jpg / png) 안내
                         ctx.font = "1.1em sans-serif";
                         ctx.fillText(
                                     "(jpg/png)",
                                     canvas.width/2,
                                     (canvas.height - dh)/2 + 25
-                                    );
+                        );
                         ctx.restore();
 
-                        // 3. 하단에 크롭 영역 그리기
-                        ctx.drawImage(img, x, y, w, h, dx, dy, dw, dh);
                     } else {
                         // 전체 화면(초기)
                         console.log("🔵 else문 진입, renderMode:", renderMode, "cropRect:", cropRect, "data:", data);
