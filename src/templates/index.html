@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Virtual Piano</title>
+    <style>
+        body { margin: 0; background-color: black; overflow: hidden; }
+        canvas { display: block; margin: 0 auto; }
+        /* 안내문구 스타일 */
+        #sheetmusic_hint {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #222; /* 아주 진한 검정 */
+            letter-spacing: 0.5px;
+            text-shadow: 1px 1px 8px #eee, 0 0 2px #555;
+            display: none;   /* 초기에 숨김 */
+            z-index: 10;
+            user-select: none;
+            pointer-events: none;
+        }
+        #sheetmusic_sub {
+            display: block;
+            font-size: 1.15rem;
+            font-weight: normal;
+            color: #eee;
+            margin-top: 0.6em;
+            letter-spacing: 0.2px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="result_canvas"></canvas>
+    <div id="sheetmusic_hint">
+        Drag and drop your sheet music here
+        <span id="sheetmusic_sub">(jpg/png)</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.5/client-dist/socket.io.min.js"></script>
+    <script>
+        const socket = io({ transports: ['websocket'] });
+        const canvas = document.getElementById("result_canvas");
+        const ctx = canvas.getContext("2d");
+        const sheetHint = document.getElementById("sheetmusic_hint");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let renderMode = "full";  // "full" or "bottom"
+        let cropRect = null;
+
+        // 웹캠
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+            const video = document.createElement("video");
+            video.srcObject = stream;
+            video.play();
+
+            video.onloadedmetadata = () => {
+                console.log("🎥 메타데이터 로드 완료", video.videoWidth, video.videoHeight);
+
+                const sendCanvas = document.createElement("canvas");
+                const sendCtx = sendCanvas.getContext("2d");
+
+                setInterval(() => {
+                    sendCanvas.width = 320;
+                    sendCanvas.height = 240;
+                    sendCtx.drawImage(video, 0, 0, 320, 240);
+                    sendCanvas.toBlob(blob => {
+                        if (blob) socket.emit("frame_blob", blob);
+                    }, "image/webp", 0.5);
+                }, 200);
+            };
+        })
+        .catch(err => {
+            console.error("❌ 카메라 접근 실패:", err);
+            alert("카메라를 사용할 수 없습니다: " + err.message);
+        });
+
+        // 프레임 수신
+        socket.on("result_frame_blob", data => {
+            try {
+                const blob = new Blob([data.image], { type: "image/webp" });
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // 크롭 모드 전환
+                    if (data.cropped && data.crop_rect && data.render_mode === "bottom") {
+                        renderMode = "bottom";
+                        cropRect = data.crop_rect;
+                    }
+
+                    if (renderMode === "bottom" && cropRect) {
+                        // 하단 정렬
+                        const [x, y, w, h] = cropRect;
+                        const scaleX = canvas.width / img.width;
+                        const scaleY = canvas.height / img.height;
+                        const dw = w * scaleX;
+                        const dh = h * scaleY;
+                        const dx = 0;
+                        const dy = canvas.height - dh;
+
+                        ctx.drawImage(img, x, y, w, h, dx, dy, dw, dh);
+
+                        // 👉 안내문구 활성화, 위치 조정
+                        sheetHint.style.display = "block";
+                        // 빈공간 중앙 = dh만큼 아래를 띄우고 그 나머지 영역의 1/2
+                        const emptyHeight = canvas.height - dh;
+                        // 문구의 높이(중앙)을 빈 공간 1/2에 맞춤
+                        sheetHint.style.top = (emptyHeight / 2 - sheetHint.offsetHeight / 2) + "px";
+                    } else {
+                        // 전체 화면
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        sheetHint.style.display = "none";
+                    }
+                };
+                img.src = URL.createObjectURL(blob);
+            } catch (e) {
+                console.error("❌ 렌더링 오류", e);
+            }
+        });
+    </script>
+</body>
+</html>

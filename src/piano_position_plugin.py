@@ -35,9 +35,31 @@ class PianoPositionPlugin:
 
             # 안내문구
             middle_y = int((y1 + y2) / 2)
-            cv2.putText(frame, "Place your hand in this zone (approx. piano key length)",
-                        (10, middle_y), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            
+            cv2.putText(frame,
+                "Put your camera above for a top-down view",
+                (30, y1 - 40),     # 초록 영역 위쪽에 위치 (위치 조정 가능)
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,                    # 조금 작게
+                (0, 120, 255),          # 주황색 (BGR, 시인성 높음)
+                2,
+                cv2.LINE_AA
+            )
+            
+            # 메인 안내문구 (진녹색, 굵게, 영역 중앙 위)
+            cv2.putText(frame, "Place your hand here for piano keys",
+                        (30, middle_y - 15), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8, (20, 110, 30), 3, cv2.LINE_AA)
+            
+            # OK 사인 안내문구 (검정, 작게, 영역 중앙)
+            cv2.putText(frame, "Show the OK gesture in this zone to start",
+                        (60, middle_y + 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.55,       # 더 작게
+                        (0, 0, 0),  # 검정
+                        2,
+                        cv2.LINE_AA
+                        )
 
             # 제스처 인식
             results = self.hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
