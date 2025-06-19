@@ -110,6 +110,7 @@ class PianoPositionPlugin:
 
             return frame, None
 
+
         except Exception as e:
             print(f"❌ on_frame 처리 중 예외 발생: {e}")
             return frame, None

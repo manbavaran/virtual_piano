@@ -35,57 +35,53 @@ def overlay_transparent(dst, overlay, x, y, alpha=0.5):
     dst[y:y+h, x:x+w, 3] = 255  # 완전 불투명
     return cv2.cvtColor(dst, cv2.COLOR_BGRA2BGR)
 
+
+
 def draw_piano_ui(
-    frame, x, y, w, h, n_keys=10, pressed_keys=None, glow_color=(0, 255, 255), glow_alpha=0.4
+    frame, x, y, w, h, n_keys=10, pressed_keys=None,
+    base_alpha=0.5, glow_color=(0,255,255), glow_alpha=0.6
 ):
-    """
-    frame: OpenCV 이미지
-    x, y, w, h: 피아노 위치, 크기
-    n_keys: 건반 개수
-    pressed_keys: 누른 건반 인덱스 리스트 (예: [2,4,6])
-    glow_color: 불빛 색 (BGR)
-    glow_alpha: 불빛 투명도 (0~1)
-    """
-    if pressed_keys is None:
-        pressed_keys = []
+    """항상 피아노 UI는 반투명+누른건반 glow 오버레이"""
     key_width = int(w / n_keys)
     key_height = h
 
-    # 피아노 전체 그릴 버퍼 (불빛 오버레이용)
-    piano_img = frame.copy()
+    piano_layer = frame.copy()
 
-    # 흰 건반 + 누른 건반 하이라이트
+    # 1. 피아노 전체(흰건반, 검은건반, 테두리, 노트) → piano_layer에만 그림
     for i in range(n_keys):
         x0 = x + i * key_width
         x1 = x + (i + 1) * key_width
 
-        # 흰건반 & 외곽선
-        cv2.rectangle(piano_img, (x0, y), (x1, y + key_height), (255, 255, 255), -1)
-        cv2.rectangle(piano_img, (x0, y), (x1, y + key_height), (0, 0, 0), 2)
+        # 흰 건반 (반투명)
+        cv2.rectangle(piano_layer, (x0, y), (x1, y+key_height), (255,255,255), -1)
+        cv2.rectangle(piano_layer, (x0, y), (x1, y+key_height), (0,0,0), 2)
         note = chr(67 + (i % 7))
         cv2.putText(
-            piano_img, note, (x0 + key_width // 2 - 8, y + key_height - 10),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (30, 30, 30), 2, cv2.LINE_AA
+            piano_layer, note, (x0 + key_width // 2 - 8, y + key_height - 10),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (30,30,30), 2, cv2.LINE_AA
         )
 
-        # 누른 건반이면 불빛 오버레이
-        if i in pressed_keys:
-            overlay = np.zeros((key_height, key_width, 4), dtype=np.uint8)
-            overlay[..., :3] = glow_color  # BGR
-            overlay[..., 3] = int(255 * glow_alpha)
-            piano_img = overlay_transparent(piano_img, overlay, x0, y, alpha=1.0)  # alpha는 위에서 조정
-
-    # 검은 건반
-    black_key_indices = [1, 2, 4, 5, 6]  # 임시 예시
+    # 검은건반
+    black_key_indices = [1,2,4,5,6]
     black_key_width = int(key_width * 0.7)
     black_key_height = int(h * 0.55)
     for i in black_key_indices:
         bx = x + i * key_width - black_key_width // 2
         by = y
         cv2.rectangle(
-            piano_img, (bx, by), (bx + black_key_width, by + black_key_height), (20, 20, 20), -1
+            piano_layer, (bx, by), (bx + black_key_width, by + black_key_height), (20, 20, 20), -1
         )
 
-    # 완성된 피아노를 원본 frame에 붙임
-    frame[y:y+h, x:x+w] = piano_img[y:y+h, x:x+w]
+    # 2. pressed_keys에만 glow
+    if pressed_keys:
+        for i in pressed_keys:
+            x0 = x + i * key_width
+            x1 = x + (i + 1) * key_width
+            roi = piano_layer[y:y+key_height, x0:x1].copy()
+            overlay = np.full(roi.shape, glow_color, dtype=np.uint8)
+            cv2.addWeighted(overlay, glow_alpha, roi, 1-glow_alpha, 0, roi)
+            piano_layer[y:y+key_height, x0:x1] = roi
+
+    # 3. piano_layer 전체를 frame에 반투명하게 합성
+    cv2.addWeighted(piano_layer, base_alpha, frame, 1-base_alpha, 0, frame)
     return frame
